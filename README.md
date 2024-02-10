@@ -12,3 +12,11 @@ nvm use
 cd fe
 yarn dev
 ```
+
+Open one more terminal and run the backend with the following commands:
+
+```bash
+nvm use
+cd ws
+yarn dev
+```
