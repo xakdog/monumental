@@ -1,9 +1,32 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Robot } from "~/components/molecules";
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
 
-export const Scene: React.FC = () => {
+import { Robot } from "~/components/molecules";
+import { useRobot, JointUpdate } from "~/lib/robot-client";
+import { CraneState, CRANE_JOINTS } from "~/lib/robot-schema";
+
+export const Scene: React.FC<{ robotId: string }> = ({ robotId }) => {
+  const [state, setState] = useState<CraneState>({
+    swing: 0,
+    lift: 0,
+    arm: 0,
+    wrist: 0,
+    jaw: 0,
+  });
+
+  const onJointUpdate = useCallback(({ jointName, value }: JointUpdate) => {
+    if (!CRANE_JOINTS.includes(jointName)) return;
+
+    setState((state) => ({ ...state, [jointName]: value }));
+  }, []);
+
+  const robot = useRobot(robotId, onJointUpdate);
+
+  // if (globalThis) {
+  //   globalThis.robot = robot;
+  // }
+
   return (
     <Canvas style={{ background: "#1d1d1d" }}>
       <OrbitControls />
@@ -29,11 +52,11 @@ export const Scene: React.FC = () => {
       <gridHelper args={[50, 25]} />
 
       <Robot
-        elevation={2.38}
-        swing={0}
-        armAngle={-0.640535835481919}
-        wristAngle={-0.6136577650012062}
-        jawGap={0}
+        elevation={state.lift}
+        swing={state.swing}
+        armAngle={state.arm}
+        wristAngle={state.wrist}
+        jawGap={state.jaw}
       />
     </Canvas>
   );
