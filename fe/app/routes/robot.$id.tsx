@@ -5,7 +5,7 @@ import { Panel } from "~/components/organisms/panel";
 import { Scene, SceneLoader } from "~/components/organisms/scene";
 import { RobotProvider } from "~/lib/robot-client";
 import { DEFAULT_CRANE_STATE } from "~/lib/robot-schema";
-import { ConnectionStatus } from "~/components/molecules";
+import { ErrorBallon, ConnectionStatus } from "~/components/molecules";
 
 type LoaderData = {
   WS_URL: string;
@@ -50,6 +50,7 @@ export default function Index() {
 
         <Panel robotId={params.id} state={preview} onPreview={updatePreview} />
         <ConnectionStatus />
+        <ErrorBallon />
       </div>
     </RobotProvider>
   );

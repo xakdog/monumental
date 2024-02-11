@@ -5,6 +5,7 @@ import React, {
   PropsWithChildren,
   useRef,
   useContext,
+  useState,
 } from "react";
 import { ReadyState } from "react-use-websocket";
 import { useWebSocket } from "./use-websocket-fix";
@@ -17,6 +18,8 @@ export type JointUpdate = {
 
 type RobotContextType = {
   readyState: ReadyState;
+  error: string;
+  setError: (error: string) => void;
   updateJoint: (robotId: string, jointName: string, value: number) => void;
   subscribeToRobot: (
     robotId: string,
@@ -62,6 +65,7 @@ export const RobotProvider: React.FC<PropsWithChildren<{ wsUrl: string }>> = ({
   children,
   wsUrl,
 }) => {
+  const [error, setError] = useState("");
   const subs = useRef(new RobotSubscriptions()).current;
   const { sendMessage, lastMessage, readyState } = useWebSocket(wsUrl, {
     shouldReconnect: (closeEvent) => true, // Will attempt to reconnect on all close events
@@ -125,7 +129,7 @@ export const RobotProvider: React.FC<PropsWithChildren<{ wsUrl: string }>> = ({
 
   return (
     <RobotContext.Provider
-      value={{ updateJoint, subscribeToRobot, readyState }}
+      value={{ updateJoint, subscribeToRobot, readyState, error, setError }}
     >
       {children}
     </RobotContext.Provider>
@@ -165,6 +169,24 @@ export const useRobot = (
   }
 
   return { ready: true, updateJoint } as const;
+};
+
+export const useErrors = () => {
+  const context = useContext(RobotContext);
+
+  if (context === undefined) {
+    throw new Error("useConnectionStatus must be used within a RobotProvider");
+  }
+
+  const show = useCallback(
+    (err: string) => {
+      context.setError(err);
+      setTimeout(() => context.setError(""), 6000);
+    },
+    [context.setError],
+  );
+
+  return { show, message: context.error };
 };
 
 export const useConnectionStatus = () => {
