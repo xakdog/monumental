@@ -55,10 +55,14 @@ export const RobotGripper: React.FC<RobotGripperProps> = ({
   jawGap,
   wristAngle,
 }) => {
-  const jawZ = 1.01 + jawGap / 20000;
+  const jawZ = 1.01 + jawGap / 10;
 
   return (
-    <mesh name="effector" position={[0, 0.12, 1]} rotation={[0, wristAngle, 0]}>
+    <mesh
+      name="effector"
+      position={[0, 0.12, 1]}
+      rotation={[0, (wristAngle * Math.PI) / 180, 0]}
+    >
       <GripperBase />
       <GripperJaw />
       <GripperActuator jawShift={jawZ} />

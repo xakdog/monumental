@@ -53,7 +53,7 @@ export class RobotServer {
   private subscribeToRobot(ws: WebSocket, robotId: string): void {
     const robot = this.robots.get(robotId);
     if (!robot) {
-      ws.send(JSON.stringify({ error: "Robot not found" }));
+      ws.send(JSON.stringify({ error: "Robot not found", robotId }));
       return;
     }
     robot.subscribers.add(ws);

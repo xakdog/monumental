@@ -1,0 +1,24 @@
+.connection-status {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  padding: 2px 8px;
+  gap: 6px;
+  font-size: 12px;
+  border-radius: 4px;
+
+  display: flex;
+  align-items: center;
+
+  background: #333333;
+  color: rgb(255, 255, 255, 75%);
+
+  --color-connected: #4ade80;
+  --color-connecting: #fb923c;
+}
+
+.connection-status__indicator {
+  height: 8px;
+  width: 8px;
+  border-radius: 50%;
+}

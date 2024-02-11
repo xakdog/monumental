@@ -23,13 +23,13 @@ export const RobotLift: React.FC<RobotLiftProps> = ({
       castShadow
       receiveShadow
       name="base"
-      rotation={[0, swingAngle, 0]}
+      rotation={[0, (swingAngle * Math.PI) / 180, 0]}
       position={[0, BASE_HEIGHT / 2, 0]}
     >
       <mesh
         castShadow
         receiveShadow
-        position={[0, elevation, BOOM_Z_SHIFT]}
+        position={[0, elevation / 20 - 3.4, BOOM_Z_SHIFT]}
         name="boom"
       >
         {children}

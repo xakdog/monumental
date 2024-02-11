@@ -1,11 +1,13 @@
 import React, {
   createContext,
-  useContext,
   useEffect,
-  useState,
   useCallback,
   PropsWithChildren,
+  useRef,
+  useContext,
 } from "react";
+import { ReadyState } from "react-use-websocket";
+import { useWebSocket } from "./use-websocket-fix";
 
 export type JointUpdate = {
   robotId: string;
@@ -14,6 +16,7 @@ export type JointUpdate = {
 };
 
 type RobotContextType = {
+  readyState: ReadyState;
   updateJoint: (robotId: string, jointName: string, value: number) => void;
   subscribeToRobot: (
     robotId: string,
@@ -23,83 +26,107 @@ type RobotContextType = {
 
 const RobotContext = createContext<RobotContextType | undefined>(undefined);
 
+type RobotId = string;
+type UpdateSubscription = (upd: JointUpdate) => void;
+
+export class RobotSubscriptions {
+  private subscriptions: Map<RobotId, UpdateSubscription[]> = new Map();
+
+  public has(robotId: RobotId) {
+    return this.subscriptions.has(robotId);
+  }
+
+  public subscribe(robotId: RobotId, callback: UpdateSubscription) {
+    if (!this.subscriptions.has(robotId)) {
+      this.subscriptions.set(robotId, []);
+    }
+
+    this.subscriptions.get(robotId)?.push(callback);
+  }
+
+  public unsubscribe(robotId: RobotId, callback: UpdateSubscription) {
+    const updated =
+      this.subscriptions.get(robotId)?.filter((sub) => sub !== callback) || [];
+
+    this.subscriptions.set(robotId, updated);
+  }
+
+  public notify(robotId: RobotId, jointName: string, value: number) {
+    this.subscriptions
+      .get(robotId)
+      ?.forEach((sub) => sub({ robotId, jointName, value }));
+  }
+}
+
 export const RobotProvider: React.FC<PropsWithChildren<{ wsUrl: string }>> = ({
   children,
   wsUrl,
 }) => {
-  const [ws, setWs] = useState<WebSocket | null>(null);
+  const subs = useRef(new RobotSubscriptions()).current;
+  const { sendMessage, lastMessage, readyState } = useWebSocket(wsUrl, {
+    shouldReconnect: (closeEvent) => true, // Will attempt to reconnect on all close events
+    reconnectInterval: 3000,
+    reconnectAttempts: 10,
+  });
 
-  useEffect(() => {
-    if (!wsUrl) return;
-
-    const websocket = new WebSocket(wsUrl);
-    websocket.onopen = () => {
-      console.log("WebSocket connection established");
-      setWs(websocket);
-    };
-    websocket.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-    websocket.onclose = () => {
-      console.log("WebSocket connection closed");
-    };
-
-    return () => {
-      setWs(null);
-      setTimeout(() => websocket.close(), 500);
-    };
-  }, [wsUrl]);
+  const sendJsonMessage = useCallback(
+    <T,>(message: T) => sendMessage(JSON.stringify(message)),
+    [sendMessage],
+  );
 
   const updateJoint = useCallback(
-    (robotId: string, jointName: string, value: number) => {
-      if (!ws) return;
-      const message = JSON.stringify({
+    (robotId: string, jointName: string, value: number) =>
+      sendJsonMessage({
         type: "controlJoint",
         robotId,
         jointName,
         value,
-      });
-      ws.send(message);
-    },
-    [ws],
+      }),
+    [sendJsonMessage],
   );
+
+  useEffect(() => {
+    if (!lastMessage) return;
+    // Ideally we need a TS type / zod schema for the message structure
+    // we will skip it for this assignment
+    const data = JSON.parse(lastMessage.data);
+
+    if (data.type === "subscribed") {
+      console.log("Subscribed to robot", data.robotId);
+    }
+
+    if (data.type === "jointUpdated") {
+      subs.notify(data.robotId, data.jointName, data.value);
+    }
+
+    if (data.error === "Robot not found") {
+      console.error("Robot not found", data.robotId);
+      window.location.href = "/robot-not-found";
+    }
+  }, [lastMessage]);
 
   const subscribeToRobot = useCallback(
     (robotId: string, onJointUpdate: (update: JointUpdate) => void) => {
-      if (!ws) return () => {};
-      if (ws.readyState !== ws.OPEN) return () => {};
+      if (!subs.has(robotId)) {
+        sendJsonMessage({
+          type: "subscribeToRobot",
+          robotId,
+        });
+      }
 
-      const message = JSON.stringify({
-        type: "subscribeToRobot",
-        robotId,
-      });
-      ws.send(message);
-
-      console.log("Subscribed to robot", robotId);
-
-      const listener = (event: MessageEvent) => {
-        const data = JSON.parse(event.data);
-
-        if (data.type === "jointUpdated" && data.robotId === robotId) {
-          onJointUpdate({
-            robotId: data.robotId,
-            jointName: data.jointName,
-            value: data.value,
-          });
-        }
-      };
-
-      ws.onmessage = listener;
+      subs.subscribe(robotId, onJointUpdate);
 
       return () => {
-        ws.onmessage = null;
+        subs.unsubscribe(robotId, onJointUpdate);
       };
     },
-    [ws],
+    [sendJsonMessage],
   );
 
   return (
-    <RobotContext.Provider value={{ updateJoint, subscribeToRobot }}>
+    <RobotContext.Provider
+      value={{ updateJoint, subscribeToRobot, readyState }}
+    >
       {children}
     </RobotContext.Provider>
   );
@@ -107,12 +134,15 @@ export const RobotProvider: React.FC<PropsWithChildren<{ wsUrl: string }>> = ({
 
 export const useRobot = (
   robotId: string,
-  onJointUpdate: (update: JointUpdate) => void,
+  onJointUpdate?: (update: JointUpdate) => void,
 ) => {
   const context = useContext(RobotContext);
+
   if (context === undefined) {
     throw new Error("useRobot must be used within a RobotProvider");
   }
+
+  const isReady = context.readyState === ReadyState.OPEN;
 
   const updateJoint = useCallback(
     (jointName: string, value: number) => {
@@ -122,10 +152,27 @@ export const useRobot = (
   );
 
   useEffect(() => {
+    if (!isReady) return;
     if (!robotId) return;
+    if (!onJointUpdate) return;
+
     const unsubscribe = context.subscribeToRobot(robotId, onJointUpdate);
     return unsubscribe;
-  }, [context, robotId, onJointUpdate]);
+  }, [isReady, robotId, context.subscribeToRobot, onJointUpdate]);
 
-  return { updateJoint };
+  if (!isReady) {
+    return { ready: false } as const;
+  }
+
+  return { ready: true, updateJoint } as const;
+};
+
+export const useConnectionStatus = () => {
+  const context = useContext(RobotContext);
+
+  if (context === undefined) {
+    throw new Error("useConnectionStatus must be used within a RobotProvider");
+  }
+
+  return context.readyState;
 };

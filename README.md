@@ -8,8 +8,12 @@ Frontend and backend are in separate directories. You can run them separately.
 Frontend is built with [Remix](https://remix.run/)
 
 ```bash
-nvm use
 cd fe
+# Copy .env.local to .env
+# to test on a different device fill in your host
+cp .env.local .env
+
+nvm use
 yarn dev
 ```
 

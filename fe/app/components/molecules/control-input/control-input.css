@@ -1,0 +1,35 @@
+.control-input {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.control-input:last-child {
+  margin-bottom: 0;
+}
+
+.control-input label {
+  margin-right: 10px;
+  font-size: 12px;
+}
+
+.control-input input {
+  cursor: col-resize;
+  border: none;
+  background-color: #555;
+  color: white;
+  padding: 5px;
+  border-radius: 3px;
+  width: 86px;
+  text-align: center;
+}
+
+.control-input input:focus {
+  background-color: #27272a;
+  outline: none;
+}
+
+.control-input input[data-out-of-range="true"] {
+  background-color: #991b1b;
+}

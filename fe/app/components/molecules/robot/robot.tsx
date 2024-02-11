@@ -3,7 +3,7 @@ import { RobotArm } from "./robot-arm";
 import { RobotLift } from "./robot-lift";
 
 type RobotProps = {
-  swing: number;
+  swingAngle: number;
   elevation: number;
   armAngle: number;
   wristAngle: number;
@@ -12,7 +12,7 @@ type RobotProps = {
 
 export const Robot: React.FC<RobotProps> = (props) => {
   return (
-    <RobotLift elevation={props.elevation} swingAngle={props.swing}>
+    <RobotLift elevation={props.elevation} swingAngle={props.swingAngle}>
       <RobotArm rotation={props.armAngle}>
         <RobotGripper jawGap={props.jawGap} wristAngle={props.wristAngle} />
       </RobotArm>

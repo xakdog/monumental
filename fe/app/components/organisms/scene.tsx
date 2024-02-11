@@ -1,39 +1,19 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera } from "@react-three/drei";
 
 import { Robot } from "~/components/molecules";
 import { useRobot, JointUpdate } from "~/lib/robot-client";
-import { CraneState, CRANE_JOINTS } from "~/lib/robot-schema";
+import { CraneState } from "~/lib/robot-schema";
 
-export const Scene: React.FC<{ robotId: string }> = ({ robotId }) => {
-  const [state, setState] = useState<CraneState>({
-    swing: 0,
-    lift: 0,
-    arm: 0,
-    wrist: 0,
-    jaw: 0,
-  });
-
-  const onJointUpdate = useCallback(({ jointName, value }: JointUpdate) => {
-    if (!CRANE_JOINTS.includes(jointName)) return;
-
-    setState((state) => ({ ...state, [jointName]: value }));
-  }, []);
-
-  const robot = useRobot(robotId, onJointUpdate);
-
-  // if (globalThis) {
-  //   globalThis.robot = robot;
-  // }
-
+export const Scene: React.FC<{ state: CraneState }> = ({ state }) => {
   return (
     <Canvas style={{ background: "#1d1d1d" }}>
       <OrbitControls />
 
       <PerspectiveCamera
         makeDefault
-        position={[-10, 10, 10]} // Adjust the camera position
+        position={[-11, 10, 10]} // Adjust the camera position
         fov={75} // Field of view
         near={0.1}
         far={100}
@@ -53,11 +33,27 @@ export const Scene: React.FC<{ robotId: string }> = ({ robotId }) => {
 
       <Robot
         elevation={state.lift}
-        swing={state.swing}
+        swingAngle={state.swing}
         armAngle={state.arm}
         wristAngle={state.wrist}
         jawGap={state.jaw}
       />
     </Canvas>
   );
+};
+
+export const SceneLoader: React.FC<{
+  robotId: string;
+  onUpdate: (joint: string, value: number) => void;
+}> = ({ robotId, onUpdate }) => {
+  const onJointUpdate = useCallback(
+    ({ jointName, value }: JointUpdate) => {
+      onUpdate(jointName, value);
+    },
+    [onUpdate],
+  );
+
+  useRobot(robotId, onJointUpdate);
+
+  return null;
 };

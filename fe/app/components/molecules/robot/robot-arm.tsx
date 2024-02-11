@@ -17,7 +17,11 @@ const ARM_Z_PIVOT = ARM_DEPTH / 2 - ARM_Z_INTERSECTION;
 
 export const RobotArm: React.FC<RobotArmProps> = ({ children, rotation }) => {
   return (
-    <mesh name="arm" position={[0, 0, ARM_Z_SHIFT]} rotation={[0, rotation, 0]}>
+    <mesh
+      name="arm"
+      position={[0, 0, ARM_Z_SHIFT]}
+      rotation={[0, (rotation * Math.PI) / 180, 0]}
+    >
       <mesh
         castShadow
         receiveShadow
